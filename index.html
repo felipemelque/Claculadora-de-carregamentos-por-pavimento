@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo de Carregamento de Pavimento</title>
+    <!-- Inclui a biblioteca Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Estilos para a mensagem de alerta customizada */
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-10 w-full max-w-3xl">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-gray-800 mb-2">
+            Cálculo de Carregamento de Pavimento
+        </h1>
+        <p class="text-center text-gray-500 mb-8">
+            Adicione e some cargas permanentes e variáveis.
+        </p>
+
+        <!-- Mensagem de alerta customizada -->
+        <div id="custom-alert" class="custom-alert bg-red-500 text-white font-semibold"></div>
+
+        <!-- Seção de Adicionar Carga Manual -->
+        <div class="bg-gray-50 p-6 rounded-lg mb-8 shadow-inner">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Adicionar Carga Manual</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label for="load-type" class="block text-sm font-medium text-gray-700">Tipo de Carga</label>
+                    <select id="load-type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                        <option value="permanente">Permanente (Gk)</option>
+                        <option value="variavel">Variável (Qk)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="load-name" class="block text-sm font-medium text-gray-700">Descrição</label>
+                    <input type="text" id="load-name" placeholder="Ex: Contrapiso, Laje..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                </div>
+                <div>
+                    <label for="load-value" class="block text-sm font-medium text-gray-700">Valor (kN/m²)</label>
+                    <input type="number" id="load-value" placeholder="0.00" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                </div>
+            </div>
+            <button id="add-load-btn" class="mt-6 w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 transition duration-300 ease-in-out">
+                Adicionar Carga
+            </button>
+        </div>
+
+        <!-- Seção de Cargas Estruturais -->
+        <div class="bg-blue-50 p-6 rounded-lg mb-8 shadow-inner">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Cargas Estruturais</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Seção para Lajes -->
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold text-gray-600 mb-2">Peso da Laje (kN/m²)</h3>
+                    <div class="flex flex-col space-y-2">
+                        <input type="number" id="laje-espessura" placeholder="Espessura (m)" step="0.01" class="rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="laje-area" placeholder="Área (m²)" step="0.01" class="rounded-md border-gray-300 shadow-sm p-2 border">
+                        <button id="add-laje-btn" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700 transition">
+                            Adicionar Laje
+                        </button>
+                    </div>
+                </div>
+                <!-- Seção para Pilares -->
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold text-gray-600 mb-2">Peso do Pilar (kN)</h3>
+                    <div class="flex flex-col space-y-2">
+                        <input type="number" id="pilar-secao" placeholder="Área da Seção (m²)" step="0.001" class="rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="pilar-altura" placeholder="Altura (m)" step="0.01" class="rounded-md border-gray-300 shadow-sm p-2 border">
+                        <button id="add-pilar-btn" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700 transition">
+                            Adicionar Pilar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção de Cargas de Cobertura -->
+        <div class="bg-yellow-50 p-6 rounded-lg mb-8 shadow-inner">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Cargas de Cobertura</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                <div>
+                    <label for="cobertura-load" class="block text-sm font-medium text-gray-700">Tipo de Cobertura</label>
+                    <select id="cobertura-load" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-2 border">
+                        <option value="telhas-ceramicas">Telhado de Telhas Cerâmicas (0.8 kN/m²)</option>
+                        <option value="telhas-metalicas">Telhado de Telhas Metálicas (0.1 kN/m²)</option>
+                        <option value="laje-impermeavel">Laje Impermeável (1.5 kN/m²)</option>
+                    </select>
+                </div>
+                <button id="add-cobertura-btn" class="w-full sm:w-auto px-6 py-2 bg-yellow-600 text-white font-semibold rounded-md shadow-md hover:bg-yellow-700 transition duration-300 ease-in-out">
+                    Adicionar Carga de Cobertura
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Cargas Adicionais -->
+        <div class="bg-orange-50 p-6 rounded-lg mb-8 shadow-inner">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Cargas Adicionais</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Seção para Reservatório -->
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold text-gray-600 mb-2">Carga de Reservatório (kN)</h3>
+                    <div class="flex flex-col space-y-2">
+                        <input type="number" id="reservatorio-volume" placeholder="Volume (m³)" step="0.01" class="rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="reservatorio-area-apoio" placeholder="Área de Apoio (m²)" step="0.01" class="rounded-md border-gray-300 shadow-sm p-2 border">
+                        <button id="add-reservatorio-btn" class="px-4 py-2 bg-yellow-600 text-white font-semibold rounded-md shadow-md hover:bg-yellow-700 transition">
+                            Adicionar Reservatório
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção de Cargas Tabeladas -->
+        <div class="bg-purple-50 p-6 rounded-lg mb-8 shadow-inner">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Cargas Tabeladas</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                <div>
+                    <label for="tabelado-load" class="block text-sm font-medium text-gray-700">Selecione uma carga</label>
+                    <select id="tabelado-load" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border">
+                        <!-- Opções geradas por JS -->
+                    </select>
+                </div>
+                <button id="add-tabelado-btn" class="w-full sm:w-auto px-6 py-2 bg-purple-600 text-white font-semibold rounded-md shadow-md hover:bg-purple-700 transition duration-300 ease-in-out">
+                    Adicionar Carga Tabelada
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Listagem de Cargas -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Cargas Adicionadas</h2>
+            <ul id="load-list" class="space-y-4">
+                <!-- Cargas serão adicionadas aqui dinamicamente -->
+            </ul>
+        </div>
+
+        <!-- Seção de Totais -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-inner">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Resumo dos Carregamentos</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Carregamento Simples (Soma Direta) -->
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold text-gray-600 mb-2">Cargas Distribuídas (kN/m²)</h3>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-gray-500">Permanente (ΣGk):</span>
+                        <span id="total-permanente-simples" class="font-bold text-lg text-green-600">0.00 kN/m²</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-gray-500">Variável (ΣQk):</span>
+                        <span id="total-variavel-simples" class="font-bold text-lg text-yellow-600">0.00 kN/m²</span>
+                    </div>
+                    <div class="border-t border-gray-200 mt-2 pt-2 flex justify-between items-center">
+                        <span class="font-bold text-gray-800">Total:</span>
+                        <span id="total-simples" class="font-extrabold text-2xl text-blue-600">0.00 kN/m²</span>
+                    </div>
+                </div>
+
+                <!-- Carregamento com Ponderação -->
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold text-gray-600 mb-2">Cargas Concentradas (kN)</h3>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-gray-500">Permanente (ΣGk):</span>
+                        <span id="total-permanente-concentrada-simples" class="font-bold text-lg text-green-600">0.00 kN</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-gray-500">Variável (ΣQk):</span>
+                        <span id="total-variavel-concentrada-simples" class="font-bold text-lg text-yellow-600">0.00 kN</span>
+                    </div>
+                    <div class="border-t border-gray-200 mt-2 pt-2 flex justify-between items-center">
+                        <span class="font-bold text-gray-800">Total:</span>
+                        <span id="total-concentrada" class="font-extrabold text-2xl text-blue-600">0.00 kN</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button id="reset-btn" class="mt-8 w-full px-6 py-2 bg-red-600 text-white font-semibold rounded-md shadow-md hover:bg-red-700 transition duration-300 ease-in-out">
+            Limpar Tudo
+        </button>
+    </div>
+
+    <script>
+        // Array para armazenar as cargas
+        let loads = [];
+
+        // Fatores de ponderação (conforme NBR 6118)
+        const gammaGk = 1.4; // Fator para carga permanente
+        const gammaQk = 1.4; // Fator para carga variável
+
+        // Valores tabelados para cargas comuns (valores baseados em referências comuns)
+        const tabelasDeCarga = {
+            "Parede de alvenaria cerâmica, 9cm": { value: 1.3, type: "permanente", unidade: "kN/m²" },
+            "Parede de alvenaria cerâmica, 19cm": { value: 2.8, type: "permanente", unidade: "kN/m²" },
+            "Revestimento de argamassa": { value: 0.2, type: "permanente", unidade: "kN/m²" },
+            "Forro de gesso": { value: 0.1, type: "permanente", unidade: "kN/m²" },
+            "Contrapiso em argamassa (5cm)": { value: 1.0, type: "permanente", unidade: "kN/m²" },
+            "Sobrecarga de uso - Residências": { value: 1.5, type: "variavel", unidade: "kN/m²" },
+            "Sobrecarga de uso - Escritórios": { value: 2.0, type: "variavel", unidade: "kN/m²" }
+        };
+
+        // Valores de referência para cargas de cobertura
+        const cargasCobertura = {
+            "telhas-ceramicas": { name: "Telhado de Telhas Cerâmicas", value: 0.8 },
+            "telhas-metalicas": { name: "Telhado de Telhas Metálicas", value: 0.1 },
+            "laje-impermeavel": { name: "Laje Impermeável", value: 1.5 }
+        };
+
+        // Pesos específicos
+        const pesoEspecificoConcreto = 25; // kN/m³
+        const pesoEspecificoAgua = 10;      // kN/m³
+
+        // Elementos do DOM
+        const addLoadBtn = document.getElementById('add-load-btn');
+        const addLajeBtn = document.getElementById('add-laje-btn');
+        const addPilarBtn = document.getElementById('add-pilar-btn');
+        const addReservatorioBtn = document.getElementById('add-reservatorio-btn');
+        const addCoberturaBtn = document.getElementById('add-cobertura-btn');
+        const addTabeladoBtn = document.getElementById('add-tabelado-btn');
+        const loadList = document.getElementById('load-list');
+        const loadNameInput = document.getElementById('load-name');
+        const loadValueInput = document.getElementById('load-value');
+        const loadTypeSelect = document.getElementById('load-type');
+        const lajeEspessuraInput = document.getElementById('laje-espessura');
+        const lajeAreaInput = document.getElementById('laje-area');
+        const pilarSecaoInput = document.getElementById('pilar-secao');
+        const pilarAlturaInput = document.getElementById('pilar-altura');
+        const reservatorioVolumeInput = document.getElementById('reservatorio-volume');
+        const reservatorioAreaApoioInput = document.getElementById('reservatorio-area-apoio');
+        const coberturaLoadSelect = document.getElementById('cobertura-load');
+        const tabeladoLoadSelect = document.getElementById('tabelado-load');
+        const resetBtn = document.getElementById('reset-btn');
+
+        const totalPermanenteSimplesEl = document.getElementById('total-permanente-simples');
+        const totalVariavelSimplesEl = document.getElementById('total-variavel-simples');
+        const totalSimplesEl = document.getElementById('total-simples');
+        const totalPermanenteConcentradaSimplesEl = document.getElementById('total-permanente-concentrada-simples');
+        const totalVariavelConcentradaSimplesEl = document.getElementById('total-variavel-concentrada-simples');
+        const totalConcentradaEl = document.getElementById('total-concentrada');
+
+        // Inicializar o dropdown de cargas tabeladas
+        function initTabeladoDropdown() {
+            for (const key in tabelasDeCarga) {
+                const option = document.createElement('option');
+                const data = tabelasDeCarga[key];
+                option.value = key;
+                option.textContent = `${key} (${data.value.toFixed(2)} ${data.unidade})`;
+                tabeladoLoadSelect.appendChild(option);
+            }
+        }
+        initTabeladoDropdown();
+        
+        // Exibe uma mensagem de alerta customizada
+        function showAlert(message) {
+            const alertBox = document.getElementById('custom-alert');
+            alertBox.textContent = message;
+            alertBox.style.display = 'block';
+            setTimeout(() => {
+                alertBox.style.opacity = '1';
+            }, 10);
+            setTimeout(() => {
+                alertBox.style.opacity = '0';
+                setTimeout(() => {
+                    alertBox.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        // Adiciona um ouvinte de evento para os botões
+        addLoadBtn.addEventListener('click', addLoad);
+        addLajeBtn.addEventListener('click', addLaje);
+        addPilarBtn.addEventListener('click', addPilar);
+        addReservatorioBtn.addEventListener('click', addReservatorio);
+        addCoberturaBtn.addEventListener('click', addCobertura);
+        addTabeladoBtn.addEventListener('click', addTabeladoLoad);
+        resetBtn.addEventListener('click', resetAll);
+
+        // Função para adicionar uma nova carga à lista
+        function addLoad() {
+            const name = loadNameInput.value.trim();
+            const value = parseFloat(loadValueInput.value);
+            const type = loadTypeSelect.value;
+
+            if (name === '' || isNaN(value) || value <= 0) {
+                showAlert('Por favor, insira uma descrição e um valor válido (maior que zero).');
+                return;
+            }
+
+            loads.push({ name, value, type, unidade: 'kN/m²' });
+            loadNameInput.value = '';
+            loadValueInput.value = '';
+            loadTypeSelect.value = 'permanente';
+            renderLoads();
+        }
+
+        // Função para adicionar carga de laje
+        function addLaje() {
+            const espessura = parseFloat(lajeEspessuraInput.value);
+            const area = parseFloat(lajeAreaInput.value);
+            if (isNaN(espessura) || espessura <= 0 || isNaN(area) || area <= 0) {
+                showAlert('Por favor, insira uma espessura e área de laje válidas.');
+                return;
+            }
+
+            const value = espessura * pesoEspecificoConcreto;
+            const name = `Laje (${(espessura * 100).toFixed(0)}cm, ${area.toFixed(2)}m²)`;
+            loads.push({ name, value, type: 'permanente', unidade: 'kN/m²' });
+            
+            lajeEspessuraInput.value = '';
+            lajeAreaInput.value = '';
+            renderLoads();
+        }
+
+        // Função para adicionar carga de pilar
+        function addPilar() {
+            const secao = parseFloat(pilarSecaoInput.value);
+            const altura = parseFloat(pilarAlturaInput.value);
+            if (isNaN(secao) || secao <= 0 || isNaN(altura) || altura <= 0) {
+                showAlert('Por favor, insira uma área de seção e altura de pilar válidas.');
+                return;
+            }
+            const name = `Pilar (${(secao * 10000).toFixed(0)}cm², ${altura.toFixed(2)}m)`;
+            const value = (secao * altura * pesoEspecificoConcreto);
+            loads.push({ name, value, type: 'permanente', unidade: 'kN' });
+            pilarSecaoInput.value = '';
+            pilarAlturaInput.value = '';
+            renderLoads();
+        }
+
+        // Função para adicionar carga de reservatório de água
+        function addReservatorio() {
+            const volume = parseFloat(reservatorioVolumeInput.value);
+            const areaApoio = parseFloat(reservatorioAreaApoioInput.value);
+
+            if (isNaN(volume) || volume <= 0 || isNaN(areaApoio) || areaApoio <= 0) {
+                showAlert('Por favor, insira um volume e área de apoio válidos.');
+                return;
+            }
+
+            const value = volume * pesoEspecificoAgua;
+            const name = `Reservatório de Água (${volume.toFixed(2)}m³) - Carga Concentrada`;
+            loads.push({ name, value, type: 'permanente', unidade: 'kN' });
+            
+            // Também pode ser útil adicionar como carga distribuída no pavimento de apoio
+            const valorDistribuido = value / areaApoio;
+            const nomeDistribuido = `Reservatório (distribuído) - ${valorDistribuido.toFixed(2)} kN/m²`;
+            loads.push({ name: nomeDistribuido, value: valorDistribuido, type: 'permanente', unidade: 'kN/m²'});
+            
+            reservatorioVolumeInput.value = '';
+            reservatorioAreaApoioInput.value = '';
+            renderLoads();
+        }
+
+        // Função para adicionar carga de cobertura
+        function addCobertura() {
+            const selectedLoadKey = coberturaLoadSelect.value;
+            const loadData = cargasCobertura[selectedLoadKey];
+            if (loadData) {
+                loads.push({
+                    name: loadData.name,
+                    value: loadData.value,
+                    type: 'permanente',
+                    unidade: 'kN/m²'
+                });
+                renderLoads();
+            }
+        }
+        
+        // Função para adicionar carga tabelada
+        function addTabeladoLoad() {
+            const selectedLoadKey = tabeladoLoadSelect.value;
+            const loadData = tabelasDeCarga[selectedLoadKey];
+            if (loadData) {
+                loads.push({
+                    name: selectedLoadKey,
+                    value: loadData.value,
+                    type: loadData.type,
+                    unidade: loadData.unidade
+                });
+                renderLoads();
+            }
+        }
+
+        // Função para remover uma carga da lista
+        function removeLoad(index) {
+            loads.splice(index, 1);
+            renderLoads();
+        }
+
+        // Função para renderizar a lista de cargas
+        function renderLoads() {
+            loadList.innerHTML = '';
+            
+            loads.forEach((load, index) => {
+                const li = document.createElement('li');
+                li.className = 'bg-white p-4 rounded-lg shadow-md flex justify-between items-center';
+                
+                const typeClass = load.type === 'permanente' ? 'text-green-600' : 'text-yellow-600';
+                
+                li.innerHTML = `
+                    <div>
+                        <span class="font-semibold text-gray-800">${load.name}</span>
+                        <span class="text-sm font-medium ${typeClass} ml-2">(${load.type === 'permanente' ? 'Permanente' : 'Variável'})</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="font-bold text-gray-600">${load.value.toFixed(2)} ${load.unidade}</span>
+                        <button class="remove-btn ml-4 text-red-500 hover:text-red-700 transition" data-index="${index}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                loadList.appendChild(li);
+            });
+
+            document.querySelectorAll('.remove-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = e.currentTarget.dataset.index;
+                    removeLoad(index);
+                });
+            });
+
+            calculateTotals();
+        }
+
+        // Função para calcular e atualizar os totais
+        function calculateTotals() {
+            let totalPermanenteSimplesDistribuida = 0;
+            let totalVariavelSimplesDistribuida = 0;
+            let totalPermanenteSimplesConcentrada = 0;
+            let totalVariavelSimplesConcentrada = 0;
+
+            loads.forEach(load => {
+                if (load.unidade === 'kN/m²') {
+                    if (load.type === 'permanente') {
+                        totalPermanenteSimplesDistribuida += load.value;
+                    } else if (load.type === 'variavel') {
+                        totalVariavelSimplesDistribuida += load.value;
+                    }
+                } else if (load.unidade === 'kN') {
+                    if (load.type === 'permanente') {
+                        totalPermanenteSimplesConcentrada += load.value;
+                    } else if (load.type === 'variavel') {
+                        totalVariavelSimplesConcentrada += load.value;
+                    }
+                }
+            });
+
+            const totalDistribuida = totalPermanenteSimplesDistribuida + totalVariavelSimplesDistribuida;
+            const totalConcentrada = totalPermanenteSimplesConcentrada + totalVariavelSimplesConcentrada;
+            
+            totalPermanenteSimplesEl.textContent = `${totalPermanenteSimplesDistribuida.toFixed(2)} kN/m²`;
+            totalVariavelSimplesEl.textContent = `${totalVariavelSimplesDistribuida.toFixed(2)} kN/m²`;
+            totalSimplesEl.textContent = `${totalDistribuida.toFixed(2)} kN/m²`;
+            
+            totalPermanenteConcentradaSimplesEl.textContent = `${totalPermanenteSimplesConcentrada.toFixed(2)} kN`;
+            totalVariavelConcentradaSimplesEl.textContent = `${totalVariavelSimplesConcentrada.toFixed(2)} kN`;
+            totalConcentradaEl.textContent = `${totalConcentrada.toFixed(2)} kN`;
+        }
+
+        // Função para resetar toda a aplicação
+        function resetAll() {
+            loads = [];
+            lajeEspessuraInput.value = '';
+            lajeAreaInput.value = '';
+            pilarSecaoInput.value = '';
+            pilarAlturaInput.value = '';
+            reservatorioVolumeInput.value = '';
+            reservatorioAreaApoioInput.value = '';
+            loadNameInput.value = '';
+            loadValueInput.value = '';
+            renderLoads();
+        }
+
+        renderLoads();
+
+    </script>
+</body>
+</html>
